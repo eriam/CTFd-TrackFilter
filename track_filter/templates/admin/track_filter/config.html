@@ -1,0 +1,74 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Track Filter &mdash; Team Assignments</h2>
+    <p class="text-muted">
+        Assign each team to <strong>Red Team</strong> (GRANITE STORM) or
+        <strong>Blue Team</strong> (VEM-CERT). Teams without a track see all challenges.
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Team Name</th>
+                <th>Current Track</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for team in teams %}
+            <tr>
+                <td>{{ team.id }}</td>
+                <td>{{ team.name }}</td>
+                <td>
+                    {% if team.id in tracks %}
+                        {% if tracks[team.id] == "red-team" %}
+                            <span class="badge bg-danger">Red Team</span>
+                        {% elif tracks[team.id] == "blue-team" %}
+                            <span class="badge bg-primary">Blue Team</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge bg-secondary">None</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('track_admin.assign_track') }}"
+                          class="d-inline-flex gap-2 align-items-center">
+                        <input type="hidden" name="team_id" value="{{ team.id }}">
+                        <input type="hidden" name="nonce" value="{{ nonce }}">
+                        <select name="track" class="form-select form-select-sm" style="width: auto;">
+                            <option value=""
+                                {% if team.id not in tracks %}selected{% endif %}>
+                                &mdash; None &mdash;
+                            </option>
+                            <option value="red-team"
+                                {% if tracks.get(team.id) == "red-team" %}selected{% endif %}>
+                                Red Team
+                            </option>
+                            <option value="blue-team"
+                                {% if tracks.get(team.id) == "blue-team" %}selected{% endif %}>
+                                Blue Team
+                            </option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

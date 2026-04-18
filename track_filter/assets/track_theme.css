@@ -1,0 +1,59 @@
+/* Track Filter — Red/Blue theming
+ *
+ * Activated by <body class="track-red"> or <body class="track-blue">,
+ * injected via context processor in __init__.py.
+ */
+
+body.track-red {
+    --track-accent: #dc2626;
+    --track-accent-light: #fecaca;
+    --track-accent-dark: #991b1b;
+    --track-bg: #1a0000;
+    --track-label: "GRANITE STORM";
+}
+
+body.track-blue {
+    --track-accent: #2563eb;
+    --track-accent-light: #bfdbfe;
+    --track-accent-dark: #1e3a8a;
+    --track-bg: #00001a;
+    --track-label: "VEM-CERT";
+}
+
+/* Navbar accent */
+body.track-red .navbar,
+body.track-blue .navbar {
+    background-color: var(--track-accent) !important;
+}
+
+/* Primary buttons */
+body.track-red .btn-primary,
+body.track-blue .btn-primary {
+    background-color: var(--track-accent) !important;
+    border-color: var(--track-accent-dark) !important;
+}
+
+body.track-red .btn-primary:hover,
+body.track-blue .btn-primary:hover {
+    background-color: var(--track-accent-dark) !important;
+}
+
+/* Challenge category badges */
+body.track-red .challenge-category,
+body.track-blue .challenge-category {
+    border-left: 4px solid var(--track-accent);
+}
+
+/* Scoreboard header */
+body.track-red #scoreboard thead,
+body.track-blue #scoreboard thead {
+    background-color: var(--track-accent) !important;
+}
+
+/* Track label in page header (optional usage via ::before) */
+body.track-red .ctf-title::after,
+body.track-blue .ctf-title::after {
+    content: " — " var(--track-label);
+    font-size: 0.7em;
+    opacity: 0.8;
+}

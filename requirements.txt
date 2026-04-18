@@ -1,0 +1,2 @@
+# No extra dependencies beyond CTFd itself.
+# Test dependencies: pytest, flask, flask-sqlalchemy

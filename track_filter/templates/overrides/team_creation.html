@@ -1,0 +1,41 @@
+{% extends "teams/new.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="text-center mb-4">Create a Team</h2>
+            <form method="POST" action="{{ url_for('teams.new') }}">
+                <input type="hidden" name="nonce" value="{{ nonce }}">
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Team Name</label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           placeholder="Enter team name" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Team Password</label>
+                    <input type="password" class="form-control" id="password" name="password"
+                           placeholder="Enter team password" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="track" class="form-label">Track</label>
+                    <select class="form-select" id="track" name="track" required>
+                        <option value="" disabled selected>Choose your track&hellip;</option>
+                        <option value="red-team">Red Team &mdash; GRANITE STORM (Attackers)</option>
+                        <option value="blue-team">Blue Team &mdash; VEM-CERT (Defenders)</option>
+                    </select>
+                    <div class="form-text">
+                        This determines which challenges you will see.
+                        It cannot be changed later.
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Create Team</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
