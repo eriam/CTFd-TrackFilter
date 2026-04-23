@@ -1,0 +1,10 @@
+<!-- Track Filter: injected into base.html via override_template -->
+<script>
+(function() {
+    var cls = "{{ track_body_class }}";
+    if (cls) {
+        document.body.classList.add(cls);
+    }
+})();
+</script>
+<link rel="stylesheet" href="/plugins/track_filter/assets/track_theme.css">

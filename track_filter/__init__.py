@@ -25,6 +25,31 @@ def load(app):
     with open(team_creation_path) as f:
         override_template("teams/new.html", f.read())
 
+    # Inject track theme CSS + body class into base template.
+    # CTFd's base.html ends with </body></html>.  We inject our
+    # snippet just before </body> so the CSS loads on every page.
+    base_inject_path = os.path.join(
+        dir_path, "templates", "overrides", "base_inject.html"
+    )
+    try:
+        from CTFd.utils.config import get_theme
+
+        theme = get_theme()
+        base_tpl_path = os.path.join(
+            app.root_path, "themes", theme, "templates", "base.html"
+        )
+        with open(base_tpl_path) as f:
+            base_html = f.read()
+        with open(base_inject_path) as f:
+            inject_html = f.read()
+
+        if "track_theme.css" not in base_html:
+            patched = base_html.replace("</body>", inject_html + "\n</body>")
+            override_template("base.html", patched)
+    except Exception:
+        # Graceful fallback — theme may not exist yet during setup
+        pass
+
     # --- Blueprints -----------------------------------------------------------
     app.register_blueprint(track_admin)
 
