@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
 from CTFd.models import db
 from CTFd.utils.decorators import admins_only
@@ -23,6 +23,7 @@ def config_view():
         "admin/track_filter/config.html",
         teams=teams,
         tracks=tracks,
+        nonce=session.get("nonce", ""),
     )
 
 
