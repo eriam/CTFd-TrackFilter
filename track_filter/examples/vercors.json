@@ -1,0 +1,38 @@
+{
+    "tracks": [
+        {
+            "id": "red-team",
+            "label": "Red Team",
+            "category_prefix": "Red Team",
+            "description": "GRANITE STORM (Attackers)",
+            "theme": {
+                "class": "track-red",
+                "accent": "#dc2626",
+                "accent_light": "#fecaca",
+                "accent_dark": "#991b1b",
+                "bg": "#1a0505",
+                "bg_subtle": "#2a0a0a",
+                "banner": "GRANITE STORM"
+            }
+        },
+        {
+            "id": "blue-team",
+            "label": "Blue Team",
+            "category_prefix": "Blue Team",
+            "description": "VEM-CERT (Defenders)",
+            "theme": {
+                "class": "track-blue",
+                "accent": "#2563eb",
+                "accent_light": "#bfdbfe",
+                "accent_dark": "#1e3a8a",
+                "bg": "#050a1a",
+                "bg_subtle": "#0a1230",
+                "banner": "VEM-CERT"
+            }
+        }
+    ],
+    "fallback_to_team": true,
+    "self_select": true,
+    "untracked": "all",
+    "hide_foreign_solves": false
+}

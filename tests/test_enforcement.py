@@ -41,12 +41,12 @@ def guarded(app, models):
     ns = type("Guarded", (), {})()
     ns.client = app.test_client()
     ns.team = team
-    ns.ais = make_user(models, "AIS", team, track="blue-team")
-    ns.cstip = make_user(models, "CSTIP", team, track="cs-tip")
+    ns.defender = make_user(models, "Defender", team, track="blue-team")
+    ns.agent = make_user(models, "Agent", team, track="support")
     ns.untracked = make_user(models, "Nobody", team)
-    ns.blue = make_challenge(models, "Ports", "Blue Team · 01 — Exposition")
-    ns.cs = make_challenge(models, "Badge", "CS-TIP — Site annexe")
-    ns.cs_optional = make_challenge(models, "Bonus", "[Optional] CS-TIP — Site annexe")
+    ns.blue = make_challenge(models, "Ports", "Blue Team · 01 — Recon")
+    ns.cs = make_challenge(models, "Badge", "Support — Helpdesk")
+    ns.cs_optional = make_challenge(models, "Bonus", "[Optional] Support — Helpdesk")
     ns.blue_hint = models.Hints(challenge_id=ns.blue.id)
     ns.cs_hint = models.Hints(challenge_id=ns.cs.id)
     ns.blue_solution = models.Solutions(challenge_id=ns.blue.id)
@@ -62,7 +62,7 @@ def _as(g, user, admin=False):
 class TestAttempt:
     def test_foreign_attempt_json_is_403(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post(
                 "/api/v1/challenges/attempt",
                 json={"challenge_id": g.blue.id, "submission": "flag{x}"},
@@ -72,7 +72,7 @@ class TestAttempt:
 
     def test_foreign_attempt_form_is_403(self, guarded):
         g = guarded
-        with _as(g, g.ais):
+        with _as(g, g.defender):
             resp = g.client.post(
                 "/api/v1/challenges/attempt",
                 data={"challenge_id": str(g.cs.id), "submission": "flag{x}"},
@@ -81,7 +81,7 @@ class TestAttempt:
 
     def test_own_attempt_passes(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post(
                 "/api/v1/challenges/attempt",
                 json={"challenge_id": g.cs_optional.id, "submission": "flag{x}"},
@@ -91,7 +91,7 @@ class TestAttempt:
 
     def test_unknown_challenge_left_to_ctfd(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post(
                 "/api/v1/challenges/attempt", json={"challenge_id": 9999}
             )
@@ -109,7 +109,7 @@ class TestAttempt:
 class TestUnlocks:
     def test_foreign_hint_unlock_is_403(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post(
                 "/api/v1/unlocks", json={"type": "hints", "target": g.blue_hint.id}
             )
@@ -118,7 +118,7 @@ class TestUnlocks:
 
     def test_foreign_solution_unlock_is_403(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post(
                 "/api/v1/unlocks",
                 json={"type": "solutions", "target": g.blue_solution.id},
@@ -127,7 +127,7 @@ class TestUnlocks:
 
     def test_own_hint_unlock_passes(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post(
                 "/api/v1/unlocks", json={"type": "hints", "target": g.cs_hint.id}
             )
@@ -135,7 +135,7 @@ class TestUnlocks:
 
     def test_unknown_type_left_to_ctfd(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.post("/api/v1/unlocks", json={"type": "users", "target": 1})
         assert resp.status_code == 200
 
@@ -144,44 +144,44 @@ class TestReadRoutes:
     @pytest.mark.parametrize("sub", SUBRESOURCES)
     def test_foreign_subresource_is_404(self, guarded, sub):
         g = guarded
-        with _as(g, g.ais):
+        with _as(g, g.defender):
             resp = g.client.get(f"/api/v1/challenges/{g.cs.id}/{sub}")
         assert resp.status_code == 404
 
     @pytest.mark.parametrize("sub", SUBRESOURCES)
     def test_own_subresource_passes(self, guarded, sub):
         g = guarded
-        with _as(g, g.ais):
+        with _as(g, g.defender):
             resp = g.client.get(f"/api/v1/challenges/{g.blue.id}/{sub}")
         assert resp.status_code == 200
 
     def test_foreign_detail_is_404(self, guarded):
         g = guarded
-        with _as(g, g.ais):
+        with _as(g, g.defender):
             assert g.client.get(f"/api/v1/challenges/{g.cs.id}").status_code == 404
             assert g.client.get(f"/api/v1/challenges/{g.blue.id}").status_code == 200
 
     def test_404_body_matches_unknown_challenge(self, guarded):
         g = guarded
-        with _as(g, g.ais):
+        with _as(g, g.defender):
             body = g.client.get(f"/api/v1/challenges/{g.cs.id}/solves").get_json()
         assert set(body) == {"message"}
 
     def test_foreign_rating_is_403(self, guarded):
         g = guarded
-        with _as(g, g.ais):
+        with _as(g, g.defender):
             resp = g.client.put(f"/api/v1/challenges/{g.cs.id}/ratings", json={"value": 1})
         assert resp.status_code == 403
 
     def test_foreign_hint_detail_is_404(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             assert g.client.get(f"/api/v1/hints/{g.blue_hint.id}").status_code == 404
             assert g.client.get(f"/api/v1/hints/{g.cs_hint.id}").status_code == 200
 
     def test_foreign_solution_detail_is_404(self, guarded):
         g = guarded
-        with _as(g, g.cstip):
+        with _as(g, g.agent):
             resp = g.client.get(f"/api/v1/solutions/{g.blue_solution.id}")
         assert resp.status_code == 404
 
@@ -189,7 +189,7 @@ class TestReadRoutes:
 class TestAdminNeverFiltered:
     def test_admin_passes_everywhere(self, guarded):
         g = guarded
-        admin = g.cstip  # an admin who also has a track
+        admin = g.agent  # an admin who also has a track
         with _as(g, admin, admin=True):
             c = g.client
             assert c.post(

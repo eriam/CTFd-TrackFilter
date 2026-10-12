@@ -10,24 +10,24 @@ from CTFd.models import db
 from track_filter.config import parse_config, set_config
 from track_filter.models import TeamTrack, UserTrack
 
-VALMONT_CONFIG = {
+MIXED_CONFIG = {
     "tracks": [
         {"id": "blue-team", "label": "Blue Team", "category_prefix": "Blue Team"},
-        {"id": "cs-tip", "label": "CS-TIP", "category_prefix": "CS-TIP"},
+        {"id": "support", "label": "Support", "category_prefix": "Support"},
     ],
 }
 
-VALMONT_CHALLENGES = [
-    {"id": 1, "name": "Ports ouverts", "category": "Blue Team · 01 — Exposition"},
-    {"id": 2, "name": "Journaux", "category": "Blue Team · 02 — Détection"},
-    {"id": 3, "name": "Badge", "category": "CS-TIP — Site annexe"},
-    {"id": 4, "name": "Bonus", "category": "[Optional] CS-TIP — Site annexe"},
+MIXED_CHALLENGES = [
+    {"id": 1, "name": "Open ports", "category": "Blue Team · 01 — Recon"},
+    {"id": 2, "name": "Logs", "category": "Blue Team · 02 — Detection"},
+    {"id": 3, "name": "Badge", "category": "Support — Helpdesk"},
+    {"id": 4, "name": "Bonus", "category": "[Optional] Support — Helpdesk"},
 ]
 
 
 def use_config(**options):
-    """Activate the Valmont tracks with the given option overrides."""
-    return set_config(parse_config(dict(VALMONT_CONFIG, **options)))
+    """Activate the mixed-team tracks with the given option overrides."""
+    return set_config(parse_config(dict(MIXED_CONFIG, **options)))
 
 
 def make_team(models, name, track=None):

@@ -20,9 +20,9 @@ def api(app, models):
     ns = type("Api", (), {})()
     ns.client = app.test_client()
     ns.team = team
-    ns.alice = make_user(models, "Alice", team, email="Alice@Valmont.example")
+    ns.alice = make_user(models, "Alice", team, email="Alice@Example.org")
     ns.bob = make_user(models, "Bob", team)
-    ns.carol = make_user(models, "Carol", team, track="cs-tip")
+    ns.carol = make_user(models, "Carol", team, track="support")
     return ns
 
 
@@ -38,27 +38,27 @@ def _get(api, url=URL, admin=True):
 
 class TestBulkAssign:
     def test_by_user_id(self, api):
-        resp = _post(api, [{"user_id": api.alice.id, "track": "cs-tip"}])
+        resp = _post(api, [{"user_id": api.alice.id, "track": "support"}])
         assert resp.status_code == 200
         row = resp.get_json()["data"][0]
         assert row["status"] == "applied"
         assert row["user_id"] == api.alice.id
         assert row["previous"] is None
-        assert UserTrack.query.get(api.alice.id).track == "cs-tip"
+        assert UserTrack.query.get(api.alice.id).track == "support"
 
     def test_by_email_case_insensitive(self, api):
-        resp = _post(api, [{"email": "alice@valmont.example", "track": "blue-team"}])
+        resp = _post(api, [{"email": "alice@example.org", "track": "blue-team"}])
         assert resp.get_json()["data"][0]["status"] == "applied"
         assert UserTrack.query.get(api.alice.id).track == "blue-team"
 
     def test_by_name(self, api):
-        resp = _post(api, [{"name": "Bob", "track": "cs-tip"}])
+        resp = _post(api, [{"name": "Bob", "track": "support"}])
         assert resp.get_json()["data"][0]["status"] == "applied"
-        assert UserTrack.query.get(api.bob.id).track == "cs-tip"
+        assert UserTrack.query.get(api.bob.id).track == "support"
 
     def test_change_reports_previous_track(self, api):
         row = _post(api, [{"name": "Carol", "track": "blue-team"}]).get_json()["data"][0]
-        assert row["previous"] == "cs-tip"
+        assert row["previous"] == "support"
         assert UserTrack.query.get(api.carol.id).track == "blue-team"
 
     def test_empty_track_removes(self, api):
@@ -79,12 +79,12 @@ class TestBulkAssign:
             api,
             [
                 {"user_id": api.alice.id, "track": "blue-team"},
-                {"email": "nobody@example.org", "track": "cs-tip"},
+                {"email": "nobody@example.org", "track": "support"},
                 {"name": "Bob"},
-                {"track": "cs-tip"},
+                {"track": "support"},
                 "not an object",
-                {"user_id": "abc", "track": "cs-tip"},
-                {"name": "Bob", "track": "cs-tip"},
+                {"user_id": "abc", "track": "support"},
+                {"name": "Bob", "track": "support"},
             ],
         ).get_json()
         statuses = [(r["index"], r["status"], r.get("error")) for r in body["data"]]
@@ -100,13 +100,13 @@ class TestBulkAssign:
         assert "invalid track" in statuses[2][2]
         assert body["meta"] == {"applied": 2, "errors": 5}
         assert UserTrack.query.get(api.alice.id).track == "blue-team"
-        assert UserTrack.query.get(api.bob.id).track == "cs-tip"
+        assert UserTrack.query.get(api.bob.id).track == "support"
 
     def test_body_must_be_a_list(self, api):
-        assert _post(api, {"user_id": 1, "track": "cs-tip"}).status_code == 400
+        assert _post(api, {"user_id": 1, "track": "support"}).status_code == 400
 
     def test_non_admin_refused(self, api):
-        resp = _post(api, [{"user_id": api.alice.id, "track": "cs-tip"}], admin=False)
+        resp = _post(api, [{"user_id": api.alice.id, "track": "support"}], admin=False)
         assert resp.status_code == 403
         assert UserTrack.query.get(api.alice.id) is None
 
@@ -116,13 +116,13 @@ class TestExport:
         body = _get(api).get_json()
         rows = {r["name"]: r for r in body["data"]}
         assert body["meta"]["count"] == 3
-        assert rows["Carol"]["track"] == "cs-tip"
-        assert rows["Carol"]["effective_track"] == "cs-tip"
+        assert rows["Carol"]["track"] == "support"
+        assert rows["Carol"]["effective_track"] == "support"
         assert rows["Carol"]["team"] == "Equipe 7"
         assert rows["Alice"]["effective_track"] is None
 
     def test_export_filters(self, api):
-        names = [r["name"] for r in _get(api, URL + "?track=cs-tip").get_json()["data"]]
+        names = [r["name"] for r in _get(api, URL + "?track=support").get_json()["data"]]
         assert names == ["Carol"]
         names = [r["name"] for r in _get(api, URL + "?track=none").get_json()["data"]]
         assert names == ["Alice", "Bob"]
@@ -133,8 +133,8 @@ class TestExport:
 
 class TestScoreboard:
     def test_points_split_by_member_track(self, api, models):
-        blue = make_challenge(models, "Ports", "Blue Team · 01 — Exposition", 100)
-        cs = make_challenge(models, "Badge", "CS-TIP — Site annexe", 50)
+        blue = make_challenge(models, "Ports", "Blue Team · 01 — Recon", 100)
+        cs = make_challenge(models, "Badge", "Support — Helpdesk", 50)
         db.session.add(UserTrack(user_id=api.alice.id, track="blue-team"))
         db.session.add_all(
             [
@@ -150,7 +150,7 @@ class TestScoreboard:
         entry = body["data"][0]
         assert entry["name"] == "Equipe 7"
         assert entry["total"] == 240
-        assert entry["by_track"] == {"blue-team": 100, "cs-tip": 40, "none": 100}
+        assert entry["by_track"] == {"blue-team": 100, "support": 40, "none": 100}
 
     def test_scoreboard_non_admin_refused(self, api):
         resp = _get(api, "/api/v1/track_filter/scoreboard", admin=False)

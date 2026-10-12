@@ -1,6 +1,8 @@
 """Tests for the plugin configuration (track definitions and options)."""
 
+import glob
 import json
+import os
 
 import pytest
 
@@ -11,10 +13,12 @@ from track_filter.config import (
     parse_config,
 )
 
-VALMONT_PATH = DEFAULT_CONFIG_PATH.replace("config.json", "examples/valmont.json")
+EXAMPLE_PATHS = sorted(
+    glob.glob(os.path.join(os.path.dirname(DEFAULT_CONFIG_PATH), "examples", "*.json"))
+)
 
 
-def _track(track_id="cs-tip", prefix="CS-TIP", **extra):
+def _track(track_id="support", prefix="Support", **extra):
     return dict({"id": track_id, "category_prefix": prefix}, **extra)
 
 
@@ -44,49 +48,57 @@ class TestDefaultConfig:
         assert "body.track-red {" in css
         assert "--track-accent: #dc2626;" in css
         assert "--track-border: rgba(220, 38, 38, 0.25);" in css
-        assert "--track-label: \"GRANITE STORM\";" in css
+        assert "--track-label" not in css
         assert "body.track-blue {" in css
         assert "--track-glow: rgba(37, 99, 235, 0.4);" in css
 
 
+class TestExamples:
+    def test_examples_are_shipped(self):
+        assert EXAMPLE_PATHS
+
+    @pytest.mark.parametrize("path", EXAMPLE_PATHS, ids=os.path.basename)
+    def test_example_is_valid(self, path):
+        with open(path) as f:
+            override = json.load(f)
+        cfg = load_config(override_path=path)
+        assert cfg.track_ids() == [t["id"] for t in override["tracks"]]
+
+
 class TestCustomConfig:
-    def test_valmont_example(self):
-        cfg = load_config(override_path=VALMONT_PATH)
-        assert cfg.track_ids() == ["blue-team", "cs-tip"]
-        assert cfg.get("cs-tip").category_prefix == "CS-TIP"
-        assert cfg.get("red-team") is None
-        assert cfg.self_select is False
-        assert cfg.untracked == "none"
-        assert cfg.fallback_to_team is False
 
     def test_override_file_from_env(self, tmp_path, monkeypatch):
         override = tmp_path / "tracks.json"
         override.write_text(json.dumps({"tracks": [_track()], "untracked": "none"}))
         monkeypatch.setenv("TRACK_FILTER_CONFIG", str(override))
         cfg = load_config()
-        assert cfg.track_ids() == ["cs-tip"]
+        assert cfg.track_ids() == ["support"]
         assert cfg.untracked == "none"
         # Keys absent from the override keep their default value
         assert cfg.self_select is True
 
     def test_label_defaults_to_prefix_and_class_to_id(self):
         cfg = parse_config({"tracks": [_track()]})
-        track = cfg.get("cs-tip")
-        assert track.label == "CS-TIP"
-        assert track.css_class == "track-cs-tip"
+        track = cfg.get("support")
+        assert track.label == "Support"
+        assert track.css_class == "track-support"
         assert track.theme_css() == ""
 
     def test_theme_as_plain_class_name(self):
         cfg = parse_config({"tracks": [_track(theme="my-class")]})
-        assert cfg.get("cs-tip").css_class == "my-class"
+        assert cfg.get("support").css_class == "my-class"
 
     def test_track_for_category_prefers_longest_prefix(self):
         cfg = parse_config(
             {"tracks": [_track("blue", "Blue"), _track("blue-team", "Blue Team")]}
         )
-        assert cfg.track_for_category("Blue Team · 01 — Exposition").id == "blue-team"
+        assert cfg.track_for_category("Blue Team · 01 — Recon").id == "blue-team"
         assert cfg.track_for_category("Blue other").id == "blue"
-        assert cfg.track_for_category("CS-TIP — Site annexe") is None
+        assert cfg.track_for_category("Support — Helpdesk") is None
+
+    def test_banner_sets_track_label(self):
+        cfg = parse_config({"tracks": [_track(theme={"banner": "OPERATION X"})]})
+        assert '--track-label: "OPERATION X";' in cfg.theme_css()
 
     def test_banner_cannot_escape_css(self):
         cfg = parse_config(
@@ -117,7 +129,7 @@ class TestInvalidConfig:
 
     def test_missing_prefix_rejected(self):
         with pytest.raises(ConfigError):
-            parse_config({"tracks": [{"id": "cs-tip"}]})
+            parse_config({"tracks": [{"id": "support"}]})
 
     def test_empty_tracks_rejected(self):
         with pytest.raises(ConfigError):

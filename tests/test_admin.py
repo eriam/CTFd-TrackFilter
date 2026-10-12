@@ -124,15 +124,15 @@ class TestUserListing:
         use_config()
         team = make_team(models, "Equipe 7", track="blue-team")
         other = make_team(models, "Equipe 8")
-        ais = make_user(models, "Alice", team)
-        cstip = make_user(models, "Charlie", team, track="cs-tip")
+        defender = make_user(models, "Alice", team)
+        agent = make_user(models, "Charlie", team, track="support")
         lone = make_user(models, "Zoe", other)
-        return team, other, ais, cstip, lone
+        return team, other, defender, agent, lone
 
     def test_lists_users_with_own_and_effective_track(self, admin_client, mixed):
         html = admin_client.get("/admin/track_filter").data.decode()
         assert "Alice" in html and "Charlie" in html and "Zoe" in html
-        assert "CS-TIP" in html
+        assert "Support" in html
         assert "(team)" in html  # Alice inherits blue-team from her team
 
     def test_filter_by_team(self, admin_client, mixed):
@@ -152,36 +152,36 @@ class TestUserListing:
         assert "Alice" not in html
 
     def test_assign_user_track(self, admin_client, mixed):
-        _, _, ais, _, _ = mixed
+        _, _, defender, _, _ = mixed
         resp = admin_client.post(
             "/admin/track_filter/assign_user",
-            data={"user_id": ais.id, "track": "cs-tip", "filter_track": "none"},
+            data={"user_id": defender.id, "track": "support", "filter_track": "none"},
         )
         assert resp.status_code in (301, 302, 303)
         assert "filter_track=none" in resp.headers["Location"]
-        assert UserTrack.query.get(ais.id).track == "cs-tip"
+        assert UserTrack.query.get(defender.id).track == "support"
 
     def test_remove_user_track(self, admin_client, mixed):
-        _, _, _, cstip, _ = mixed
+        _, _, _, agent, _ = mixed
         admin_client.post(
-            "/admin/track_filter/assign_user", data={"user_id": cstip.id, "track": ""}
+            "/admin/track_filter/assign_user", data={"user_id": agent.id, "track": ""}
         )
-        assert UserTrack.query.get(cstip.id) is None
+        assert UserTrack.query.get(agent.id) is None
 
     def test_invalid_user_track_rejected(self, admin_client, mixed):
-        _, _, ais, _, _ = mixed
+        _, _, defender, _, _ = mixed
         admin_client.post(
-            "/admin/track_filter/assign_user", data={"user_id": ais.id, "track": "red-team"}
+            "/admin/track_filter/assign_user", data={"user_id": defender.id, "track": "red-team"}
         )
-        assert UserTrack.query.get(ais.id) is None
+        assert UserTrack.query.get(defender.id) is None
 
     def test_team_assignment_validated_against_config(self, admin_client, mixed):
         _, other, *_ = mixed
         admin_client.post(
-            "/admin/track_filter/assign", data={"team_id": other.id, "track": "cs-tip"}
+            "/admin/track_filter/assign", data={"team_id": other.id, "track": "support"}
         )
-        assert TeamTrack.query.get(other.id).track == "cs-tip"
+        assert TeamTrack.query.get(other.id).track == "support"
         admin_client.post(
             "/admin/track_filter/assign", data={"team_id": other.id, "track": "red-team"}
         )
-        assert TeamTrack.query.get(other.id).track == "cs-tip"
+        assert TeamTrack.query.get(other.id).track == "support"

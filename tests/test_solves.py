@@ -40,18 +40,18 @@ def team_solves(app, models):
     app.add_url_rule("/teams/<int:team_id>", "teams.public", lambda team_id: "")
 
     team = make_team(models, "Equipe mixte")
-    ais = make_user(models, "AIS", team, track="blue-team")
-    cstip = make_user(models, "CSTIP", team, track="cs-tip")
-    blue = make_challenge(models, "Ports ouverts", "Blue Team · 01 — Exposition", 100)
-    cs = make_challenge(models, "Badge", "CS-TIP — Site annexe", 50)
+    defender = make_user(models, "Defender", team, track="blue-team")
+    agent = make_user(models, "Agent", team, track="support")
+    blue = make_challenge(models, "Open ports", "Blue Team · 01 — Recon", 100)
+    cs = make_challenge(models, "Badge", "Support — Helpdesk", 50)
     db.session.add_all(
         [
-            models.Solves(challenge_id=blue.id, user_id=ais.id, team_id=team.id),
-            models.Solves(challenge_id=cs.id, user_id=cstip.id, team_id=team.id),
+            models.Solves(challenge_id=blue.id, user_id=defender.id, team_id=team.id),
+            models.Solves(challenge_id=cs.id, user_id=agent.id, team_id=team.id),
         ]
     )
     db.session.commit()
-    return team, ais, cstip
+    return team, defender, agent
 
 
 def _api_names(app, url, user, team, admin=False):
@@ -71,28 +71,28 @@ def _page_names(app, url, user, team, admin=False):
 class TestTeamSolvesApi:
     def test_disabled_by_default(self, app, team_solves):
         use_config()
-        team, ais, _ = team_solves
-        names = _api_names(app, "/api/v1/teams/me/solves", ais, team)
-        assert ("Badge", "CS-TIP — Site annexe") in names
+        team, defender, _ = team_solves
+        names = _api_names(app, "/api/v1/teams/me/solves", defender, team)
+        assert ("Badge", "Support — Helpdesk") in names
 
     @pytest.mark.parametrize("url", ["/api/v1/teams/me/solves", "/api/v1/teams/{id}/solves"])
     def test_foreign_titles_masked(self, app, team_solves, url):
         use_config(hide_foreign_solves=True)
-        team, ais, cstip = team_solves
+        team, defender, agent = team_solves
         url = url.format(id=team.id)
-        assert _api_names(app, url, ais, team) == [
-            (HIDDEN_NAME, "CS-TIP"),
-            ("Ports ouverts", "Blue Team · 01 — Exposition"),
+        assert _api_names(app, url, defender, team) == [
+            (HIDDEN_NAME, "Support"),
+            ("Open ports", "Blue Team · 01 — Recon"),
         ]
-        assert _api_names(app, url, cstip, team) == [
-            ("Badge", "CS-TIP — Site annexe"),
+        assert _api_names(app, url, agent, team) == [
+            ("Badge", "Support — Helpdesk"),
             (HIDDEN_NAME, "Blue Team"),
         ]
 
     def test_admin_sees_all_titles(self, app, team_solves):
         use_config(hide_foreign_solves=True)
-        team, ais, _ = team_solves
-        names = _api_names(app, "/api/v1/teams/me/solves", ais, team, admin=True)
+        team, defender, _ = team_solves
+        names = _api_names(app, "/api/v1/teams/me/solves", defender, team, admin=True)
         assert HIDDEN_NAME not in [n for n, _ in names]
 
 
@@ -100,22 +100,22 @@ class TestTeamPages:
     @pytest.mark.parametrize("url", ["/team", "/teams/{id}"])
     def test_foreign_titles_masked_on_team_pages(self, app, team_solves, url):
         use_config(hide_foreign_solves=True)
-        team, ais, _ = team_solves
-        assert _page_names(app, url.format(id=team.id), ais, team) == [
-            (HIDDEN_NAME, "CS-TIP", 50),
-            ("Ports ouverts", "Blue Team · 01 — Exposition", 100),
+        team, defender, _ = team_solves
+        assert _page_names(app, url.format(id=team.id), defender, team) == [
+            (HIDDEN_NAME, "Support", 50),
+            ("Open ports", "Blue Team · 01 — Recon", 100),
         ]
 
     def test_other_endpoints_get_real_objects(self, app, team_solves):
         use_config(hide_foreign_solves=True)
-        team, ais, _ = team_solves
-        names = _page_names(app, "/api/v1/teams/me/solves", ais, team)
+        team, defender, _ = team_solves
+        names = _page_names(app, "/api/v1/teams/me/solves", defender, team)
         assert HIDDEN_NAME not in [n for n, _, _ in names]
 
     def test_masked_solve_is_read_only(self, app, team_solves):
         use_config(hide_foreign_solves=True)
-        team, ais, _ = team_solves
-        with app.test_request_context("/team"), logged_in(ais, team):
+        team, defender, _ = team_solves
+        with app.test_request_context("/team"), logged_in(defender, team):
             masked = [s for s in team.get_solves() if s.challenge.name == HIDDEN_NAME]
             with pytest.raises(AttributeError):
                 masked[0].challenge.name = "x"
@@ -126,6 +126,6 @@ class TestTeamPages:
 
     def test_disabled_option_leaves_pages_alone(self, app, team_solves):
         use_config()
-        team, ais, _ = team_solves
-        names = _page_names(app, "/team", ais, team)
-        assert ("Badge", "CS-TIP — Site annexe", 50) in names
+        team, defender, _ = team_solves
+        names = _page_names(app, "/team", defender, team)
+        assert ("Badge", "Support — Helpdesk", 50) in names

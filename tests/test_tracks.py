@@ -10,7 +10,7 @@ from track_filter.filter import (
 from track_filter.tracks import resolve_track_id
 
 from .helpers import (
-    VALMONT_CHALLENGES,
+    MIXED_CHALLENGES,
     json_response,
     logged_in,
     make_team,
@@ -22,7 +22,7 @@ from .helpers import (
 def _visible_ids(app, user=None, team=None, admin=False):
     with app.test_request_context("/api/v1/challenges", method="GET"):
         with logged_in(user, team, admin):
-            resp = json_response(app, {"success": True, "data": VALMONT_CHALLENGES})
+            resp = json_response(app, {"success": True, "data": MIXED_CHALLENGES})
             return [c["id"] for c in filter_challenges_by_track(resp).get_json()["data"]]
 
 
@@ -36,26 +36,26 @@ def _detail_status(app, challenge, user=None, team=None, admin=False):
 class TestResolution:
     def test_user_track_without_team(self, app, models):
         use_config()
-        user = make_user(models, "Solo", track="cs-tip")
+        user = make_user(models, "Solo", track="support")
         with app.test_request_context(), logged_in(user):
-            assert get_current_track().id == "cs-tip"
+            assert get_current_track().id == "support"
 
     def test_user_track_overrides_team_track(self, app, models):
         use_config()
-        team = make_team(models, "Mixte", track="blue-team")
-        user = make_user(models, "Alice", team, track="cs-tip")
-        assert resolve_track_id(user.id, team.id) == "cs-tip"
+        team = make_team(models, "Mixed", track="blue-team")
+        user = make_user(models, "Alice", team, track="support")
+        assert resolve_track_id(user.id, team.id) == "support"
 
     def test_fallback_to_team(self, app, models):
         use_config()
-        team = make_team(models, "Vercors", track="blue-team")
+        team = make_team(models, "Alpha", track="blue-team")
         user = make_user(models, "Bob", team)
         with app.test_request_context(), logged_in(user, team):
             assert get_current_track().id == "blue-team"
 
     def test_fallback_disabled(self, app, models):
         use_config(fallback_to_team=False)
-        team = make_team(models, "Vercors", track="blue-team")
+        team = make_team(models, "Alpha", track="blue-team")
         user = make_user(models, "Bob", team)
         with app.test_request_context(), logged_in(user, team):
             assert get_current_track() is None
@@ -77,35 +77,35 @@ class TestResolution:
         use_config()
         assert dict(TRACK_CATEGORY_PREFIX) == {
             "blue-team": "Blue Team",
-            "cs-tip": "CS-TIP",
+            "support": "Support",
         }
 
 
 class TestMixedTeam:
-    """One team, one blue-team member and one cs-tip member."""
+    """One team, one blue-team member and one support member."""
 
     @pytest.fixture()
     def mixed(self, app, models):
         use_config(untracked="none", fallback_to_team=False)
         team = make_team(models, "Equipe 7")
-        ais = make_user(models, "AIS", team, track="blue-team")
-        cstip = make_user(models, "CSTIP", team, track="cs-tip")
-        return team, ais, cstip
+        defender = make_user(models, "Defender", team, track="blue-team")
+        agent = make_user(models, "Agent", team, track="support")
+        return team, defender, agent
 
     def test_blue_member_sees_only_blue_challenges(self, app, mixed):
-        team, ais, _ = mixed
-        assert _visible_ids(app, ais, team) == [1, 2]
+        team, defender, _ = mixed
+        assert _visible_ids(app, defender, team) == [1, 2]
 
-    def test_cs_tip_member_sees_only_cs_tip_challenges(self, app, mixed):
-        team, _, cstip = mixed
-        assert _visible_ids(app, cstip, team) == [3, 4]
+    def test_support_member_sees_only_support_challenges(self, app, mixed):
+        team, _, agent = mixed
+        assert _visible_ids(app, agent, team) == [3, 4]
 
     def test_detail_of_other_track_is_404(self, app, mixed):
-        team, ais, cstip = mixed
-        assert _detail_status(app, VALMONT_CHALLENGES[2], ais, team) == 404
-        assert _detail_status(app, VALMONT_CHALLENGES[0], cstip, team) == 404
-        assert _detail_status(app, VALMONT_CHALLENGES[0], ais, team) == 200
-        assert _detail_status(app, VALMONT_CHALLENGES[3], cstip, team) == 200
+        team, defender, agent = mixed
+        assert _detail_status(app, MIXED_CHALLENGES[2], defender, team) == 404
+        assert _detail_status(app, MIXED_CHALLENGES[0], agent, team) == 404
+        assert _detail_status(app, MIXED_CHALLENGES[0], defender, team) == 200
+        assert _detail_status(app, MIXED_CHALLENGES[3], agent, team) == 200
 
 
 class TestUntrackedPolicy:
@@ -113,13 +113,13 @@ class TestUntrackedPolicy:
         use_config(untracked="all")
         user = make_user(models, "Eve")
         assert _visible_ids(app, user) == [1, 2, 3, 4]
-        assert _detail_status(app, VALMONT_CHALLENGES[2], user) == 200
+        assert _detail_status(app, MIXED_CHALLENGES[2], user) == 200
 
     def test_untracked_none_sees_nothing(self, app, models):
         use_config(untracked="none")
         user = make_user(models, "Eve")
         assert _visible_ids(app, user) == []
-        assert _detail_status(app, VALMONT_CHALLENGES[2], user) == 404
+        assert _detail_status(app, MIXED_CHALLENGES[2], user) == 404
 
     def test_untracked_none_applies_to_anonymous_visitors(self, app):
         use_config(untracked="none")
@@ -132,6 +132,6 @@ class TestUntrackedPolicy:
 
     def test_admin_with_a_track_is_not_filtered(self, app, models):
         use_config()
-        admin = make_user(models, "Root", track="cs-tip")
+        admin = make_user(models, "Root", track="support")
         assert _visible_ids(app, admin, admin=True) == [1, 2, 3, 4]
-        assert _detail_status(app, VALMONT_CHALLENGES[0], admin, admin=True) == 200
+        assert _detail_status(app, MIXED_CHALLENGES[0], admin, admin=True) == 200

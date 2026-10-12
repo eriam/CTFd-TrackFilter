@@ -13,7 +13,7 @@ from CTFd.models import db
 import track_filter
 from track_filter.models import TeamTrack, UserTrack
 
-from .helpers import VALMONT_CONFIG, logged_in, make_team, make_user
+from .helpers import MIXED_CONFIG, logged_in, make_team, make_user
 
 BASE_INJECT = os.path.join(
     os.path.dirname(track_filter.__file__), "templates", "overrides", "base_inject.html"
@@ -85,7 +85,7 @@ class TestSelfSelect:
         assert TeamTrack.query.count() == 0
 
     def test_self_select_false_ignores_submitted_track(self, app, models, load_plugin):
-        override_template = load_plugin(**dict(VALMONT_CONFIG, self_select=False))
+        override_template = load_plugin(**dict(MIXED_CONFIG, self_select=False))
         assert "teams/new.html" not in _overridden(override_template)
         with patch(
             "track_filter.team_creation.get_current_team", side_effect=_newest_team(models)
@@ -97,13 +97,13 @@ class TestSelfSelect:
         assert TeamTrack.query.count() == 0
 
     def test_track_on_registration_is_ignored(self, app, models, load_plugin):
-        load_plugin(**dict(VALMONT_CONFIG, self_select=False))
-        app.test_client().post("/register", data={"name": "u", "track": "cs-tip"})
+        load_plugin(**dict(MIXED_CONFIG, self_select=False))
+        app.test_client().post("/register", data={"name": "u", "track": "support"})
         assert UserTrack.query.count() == 0
         assert TeamTrack.query.count() == 0
 
     def test_form_options_come_from_config(self, app, load_plugin):
-        load_plugin(**VALMONT_CONFIG)
+        load_plugin(**MIXED_CONFIG)
         template = os.path.join(
             os.path.dirname(track_filter.__file__),
             "templates", "overrides", "team_creation.html",
@@ -114,7 +114,7 @@ class TestSelfSelect:
             app.add_url_rule("/teams/new", "teams.new")
             html = render_template_string(source, nonce="n")
         assert 'value="blue-team"' in html
-        assert 'value="cs-tip"' in html
+        assert 'value="support"' in html
         assert "red-team" not in html
 
 
@@ -124,16 +124,16 @@ class TestTheme:
             return render_template_string("{{ track_body_class }}")
 
     def test_body_class_follows_user_track_not_team(self, app, models, load_plugin):
-        load_plugin(**VALMONT_CONFIG)
-        team = make_team(models, "Mixte", track="blue-team")
-        cstip = make_user(models, "CSTIP", team, track="cs-tip")
-        ais = make_user(models, "AIS", team)
-        assert self._body_class(app, cstip, team) == "track-themed track-cs-tip"
-        assert self._body_class(app, ais, team) == "track-themed track-blue-team"
+        load_plugin(**MIXED_CONFIG)
+        team = make_team(models, "Mixed", track="blue-team")
+        agent = make_user(models, "Agent", team, track="support")
+        defender = make_user(models, "Defender", team)
+        assert self._body_class(app, agent, team) == "track-themed track-support"
+        assert self._body_class(app, defender, team) == "track-themed track-blue-team"
 
     def test_legacy_body_class(self, app, models, load_plugin):
         load_plugin()
-        team = make_team(models, "Vercors", track="red-team")
+        team = make_team(models, "Alpha", track="red-team")
         assert self._body_class(app, None, team) == "track-themed track-red"
 
     def test_no_track_no_class(self, app, models, load_plugin):
@@ -142,7 +142,7 @@ class TestTheme:
 
     def test_base_inject_renders_generated_theme(self, app, models, load_plugin):
         load_plugin()
-        team = make_team(models, "Vercors", track="blue-team")
+        team = make_team(models, "Alpha", track="blue-team")
         with open(BASE_INJECT) as f:
             source = f.read()
         with app.test_request_context(), logged_in(None, team):
