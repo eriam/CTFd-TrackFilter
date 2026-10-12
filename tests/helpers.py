@@ -64,9 +64,9 @@ def make_challenge(models, name, category, value=100):
 @contextmanager
 def logged_in(user=None, team=None, admin=False, module="track_filter.filter"):
     """Pretend ``user`` (member of ``team``) is the current CTFd user."""
-    with patch(f"{module}.get_current_user", return_value=user), patch(
-        f"{module}.get_current_team", return_value=team
-    ), patch(f"{module}.is_admin", return_value=admin):
+    with patch(f"{module}.get_current_user", return_value=user, create=True), patch(
+        f"{module}.get_current_team", return_value=team, create=True
+    ), patch(f"{module}.is_admin", return_value=admin, create=True):
         yield
 
 

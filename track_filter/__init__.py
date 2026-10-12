@@ -3,6 +3,7 @@ import os
 from CTFd.plugins import register_plugin_assets_directory
 
 from .admin import track_admin
+from .api import track_api
 from .config import get_config, load_config, set_config
 from .filter import get_current_track, register_filter
 from .team_creation import register_team_creation_hooks
@@ -54,6 +55,7 @@ def load(app):
 
     # --- Blueprints -----------------------------------------------------------
     app.register_blueprint(track_admin)
+    app.register_blueprint(track_api)
 
     # --- Challenge API filter -------------------------------------------------
     register_filter(app)
