@@ -8,6 +8,7 @@ just enough to test the plugin logic.
 
 import sys
 import types
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,8 +21,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-# Minimal Teams model matching CTFd's schema
+# Minimal CTFd models matching the columns the plugin relies on
 _teams_model = None
+_models = {}
 
 
 def _build_teams_model():
@@ -38,12 +40,70 @@ def _build_teams_model():
     return Teams
 
 
+def _build_models():
+    """Build (once) the stub CTFd models and return them by class name."""
+    if _models:
+        return _models
+
+    Teams = _build_teams_model()
+
+    class Users(db.Model):
+        __tablename__ = "users"
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(128), unique=True)
+        email = db.Column(db.String(128), unique=True)
+        team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
+
+    class Challenges(db.Model):
+        __tablename__ = "challenges"
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(80))
+        category = db.Column(db.String(80))
+        value = db.Column(db.Integer, default=0)
+
+    class Hints(db.Model):
+        __tablename__ = "hints"
+        id = db.Column(db.Integer, primary_key=True)
+        challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"))
+
+    class Solutions(db.Model):
+        __tablename__ = "solutions"
+        id = db.Column(db.Integer, primary_key=True)
+        challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"))
+
+    class Solves(db.Model):
+        __tablename__ = "solves"
+        id = db.Column(db.Integer, primary_key=True)
+        challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"))
+        user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+        team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
+
+    class Awards(db.Model):
+        __tablename__ = "awards"
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+        team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
+        value = db.Column(db.Integer, default=0)
+
+    for model in (Teams, Users, Challenges, Hints, Solutions, Solves, Awards):
+        _models[model.__name__] = model
+    return _models
+
+
+def _get_class_by_tablename(tablename):
+    for model in _models.values():
+        if model.__tablename__ == tablename:
+            return model
+    return None
+
+
 def _setup_ctfd_stubs():
     """Install fake CTFd modules into sys.modules."""
     # CTFd.models
     models_mod = types.ModuleType("CTFd.models")
     models_mod.db = db
     models_mod.Teams = None  # patched after app context
+    models_mod.get_class_by_tablename = _get_class_by_tablename
 
     # CTFd.plugins
     plugins_mod = types.ModuleType("CTFd.plugins")
@@ -54,6 +114,8 @@ def _setup_ctfd_stubs():
     utils_mod = types.ModuleType("CTFd.utils")
     utils_user_mod = types.ModuleType("CTFd.utils.user")
     utils_user_mod.get_current_team = MagicMock(return_value=None)
+    utils_user_mod.get_current_user = MagicMock(return_value=None)
+    utils_user_mod.is_admin = MagicMock(return_value=False)
 
     # CTFd.utils.decorators
     utils_decorators_mod = types.ModuleType("CTFd.utils.decorators")
@@ -124,9 +186,9 @@ def app():
     ])
 
     with app.app_context():
-        Teams = _build_teams_model()
-        # Patch CTFd.models.Teams for use in admin.py
-        sys.modules["CTFd.models"].Teams = Teams
+        # Patch CTFd.models.<Model> for use by the plugin's lazy imports
+        for name, model in _build_models().items():
+            setattr(sys.modules["CTFd.models"], name, model)
         db.create_all()
         yield app
         db.session.remove()
@@ -141,6 +203,12 @@ def client(app):
 @pytest.fixture()
 def teams_model():
     return _build_teams_model()
+
+
+@pytest.fixture()
+def models():
+    """Stub CTFd models by class name (Teams, Users, Challenges, Hints, ...)."""
+    return SimpleNamespace(**_build_models())
 
 
 @pytest.fixture(autouse=True)
