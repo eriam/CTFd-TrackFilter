@@ -36,6 +36,11 @@ def _build_teams_model():
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(128))
 
+        def get_solves(self, admin=False):
+            Users, Solves = _models["Users"], _models["Solves"]
+            member_ids = [u.id for u in Users.query.filter_by(team_id=self.id)]
+            return Solves.query.filter(Solves.user_id.in_(member_ids)).all()
+
     _teams_model = Teams
     return Teams
 
@@ -77,6 +82,7 @@ def _build_models():
         challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"))
         user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
         team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
+        challenge = db.relationship("Challenges", lazy="joined")
 
     class Awards(db.Model):
         __tablename__ = "awards"

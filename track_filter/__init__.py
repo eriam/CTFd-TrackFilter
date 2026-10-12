@@ -6,6 +6,7 @@ from .admin import track_admin
 from .api import track_api
 from .config import get_config, load_config, set_config
 from .filter import get_current_track, register_filter
+from .solves import register_solve_masking
 from .team_creation import register_team_creation_hooks
 
 
@@ -59,6 +60,7 @@ def load(app):
 
     # --- Challenge API filter -------------------------------------------------
     register_filter(app)
+    register_solve_masking(app)
 
     # --- Static assets --------------------------------------------------------
     register_plugin_assets_directory(app, base_path="/plugins/track_filter/assets/")
