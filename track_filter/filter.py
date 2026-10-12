@@ -2,7 +2,8 @@ import json
 import re
 from collections.abc import Mapping
 
-from flask import request
+from flask import jsonify, request
+from werkzeug.exceptions import NotFound
 
 from CTFd.utils.user import get_current_team, get_current_user, is_admin
 
@@ -132,6 +133,128 @@ def _filter_challenge_detail(response):
     return response
 
 
+# --- Server-side enforcement ----------------------------------------------------
+
+# Neutral message: does not say whether the challenge exists or which track
+# it belongs to.
+FORBIDDEN_MESSAGE = "This challenge is not available."
+
+# /api/v1/challenges/<id> and its per-challenge sub-resources (CTFd 3.8).
+_CHALLENGE_PATH_RE = re.compile(
+    r"^/api/v1/challenges/(\d+)"
+    r"(?:/(?:solves|files|hints|tags|topics|flags|requirements|ratings|solution))?$"
+)
+# Objects that belong to a challenge through their challenge_id column.
+_OWNED_PATH_RE = re.compile(r"^/api/v1/(hints|solutions)/(\d+)$")
+
+_SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
+
+def _to_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _request_data():
+    if request.is_json:
+        data = request.get_json(silent=True)
+    else:
+        data = request.form
+    return data if hasattr(data, "get") else {}
+
+
+def _owner_challenge_id(tablename, object_id):
+    """challenge_id of the hint / solution / ... row, or None."""
+    from CTFd.models import get_class_by_tablename
+
+    model = get_class_by_tablename(tablename)
+    if model is None or not hasattr(model, "challenge_id") or object_id is None:
+        return None
+    obj = model.query.get(object_id)
+    return getattr(obj, "challenge_id", None)
+
+
+def _deny_not_found():
+    # Same body as flask-restx gives for a challenge id that does not exist.
+    resp = jsonify({"message": NotFound.description})
+    resp.status_code = 404
+    return resp
+
+
+def _deny_forbidden(field):
+    resp = jsonify({"success": False, "errors": {field: [FORBIDDEN_MESSAGE]}})
+    resp.status_code = 403
+    return resp
+
+
+def _deny_attempt():
+    # Same shape as CTFd's own refusals ("paused", "ratelimited") so the
+    # challenge modal displays the message.
+    resp = jsonify(
+        {"success": True, "data": {"status": "forbidden", "message": FORBIDDEN_MESSAGE}}
+    )
+    resp.status_code = 403
+    return resp
+
+
+def _targeted_challenge():
+    """Return ``(challenge_id, deny)`` for requests acting on one challenge.
+
+    ``deny`` builds the refusal response.  Returns None for requests the
+    guard does not care about.
+    """
+    path = request.path.rstrip("/")
+    method = request.method
+
+    if method == "POST" and path == "/api/v1/challenges/attempt":
+        return _to_int(_request_data().get("challenge_id")), _deny_attempt
+
+    if method == "POST" and path == "/api/v1/unlocks":
+        data = _request_data()
+        tablename = data.get("type")
+        if not isinstance(tablename, str):
+            return None
+        challenge_id = _owner_challenge_id(tablename, _to_int(data.get("target")))
+        return challenge_id, lambda: _deny_forbidden("target")
+
+    match = _CHALLENGE_PATH_RE.match(path)
+    if match:
+        if method in _SAFE_METHODS:
+            return int(match.group(1)), _deny_not_found
+        return int(match.group(1)), lambda: _deny_forbidden("challenge_id")
+
+    match = _OWNED_PATH_RE.match(path)
+    if match and method in _SAFE_METHODS:
+        challenge_id = _owner_challenge_id(match.group(1), int(match.group(2)))
+        return challenge_id, _deny_not_found
+
+    return None
+
+
+def enforce_track_access():
+    """before_request hook refusing actions on challenges outside the track.
+
+    Unknown challenges are left to CTFd, which answers as usual.
+    """
+    target = _targeted_challenge()
+    if target is None or target[0] is None:
+        return None
+
+    allowed = current_category_filter()
+    if allowed is None:
+        return None
+
+    from CTFd.models import Challenges
+
+    challenge = Challenges.query.get(target[0])
+    if challenge is None or allowed(challenge.category):
+        return None
+    return target[1]()
+
+
 def register_filter(app):
-    """Register the after_request hook on the Flask app."""
+    """Register the request hooks on the Flask app."""
+    app.before_request(enforce_track_access)
     app.after_request(filter_challenges_by_track)
