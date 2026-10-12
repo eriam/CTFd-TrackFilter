@@ -1,0 +1,38 @@
+{
+    "tracks": [
+        {
+            "id": "blue-team",
+            "label": "Blue Team",
+            "category_prefix": "Blue Team",
+            "description": "AIS",
+            "theme": {
+                "class": "track-blue",
+                "accent": "#2563eb",
+                "accent_light": "#bfdbfe",
+                "accent_dark": "#1e3a8a",
+                "bg": "#050a1a",
+                "bg_subtle": "#0a1230",
+                "banner": "BLUE TEAM"
+            }
+        },
+        {
+            "id": "cs-tip",
+            "label": "CS-TIP",
+            "category_prefix": "CS-TIP",
+            "description": "Site annexe",
+            "theme": {
+                "class": "track-cs-tip",
+                "accent": "#0d9488",
+                "accent_light": "#99f6e4",
+                "accent_dark": "#115e59",
+                "bg": "#04140f",
+                "bg_subtle": "#082a22",
+                "banner": "CS-TIP"
+            }
+        }
+    ],
+    "fallback_to_team": false,
+    "self_select": false,
+    "untracked": "none",
+    "hide_foreign_solves": true
+}

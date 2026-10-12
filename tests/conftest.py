@@ -141,3 +141,17 @@ def client(app):
 @pytest.fixture()
 def teams_model():
     return _build_teams_model()
+
+
+@pytest.fixture(autouse=True)
+def track_config():
+    """Run every test against the shipped default configuration.
+
+    Tests that need other tracks or options call ``set_config(...)``; the
+    default is restored afterwards.
+    """
+    from track_filter.config import load_config, reset_config, set_config
+
+    cfg = set_config(load_config(override_path=""))
+    yield cfg
+    reset_config()
