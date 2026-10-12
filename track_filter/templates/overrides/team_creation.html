@@ -20,22 +20,28 @@
                            placeholder="Enter team password" required>
                 </div>
 
+                {% if track_filter_self_select %}
                 <div class="mb-3">
                     <label for="track" class="form-label">Track</label>
                     <select class="form-select" id="track" name="track" required>
                         <option value="" disabled selected>Choose your track&hellip;</option>
-                        <option value="red-team">Red Team &mdash; GRANITE STORM (Attackers)</option>
-                        <option value="blue-team">Blue Team &mdash; VEM-CERT (Defenders)</option>
+                        {% for track in track_filter_tracks %}
+                        <option value="{{ track.id }}" data-accent="{{ track.accent }}">
+                            {{ track.label }}{% if track.description %} &mdash; {{ track.description }}{% endif %}
+                        </option>
+                        {% endfor %}
                     </select>
                     <div class="form-text">
                         This determines which challenges you will see.
                         It cannot be changed later.
                     </div>
                 </div>
+                {% endif %}
 
                 <button type="submit" class="btn btn-primary w-100">Create Team</button>
             </form>
         </div>
     </div>
 </div>
+<script src="/plugins/track_filter/assets/track_selector.js"></script>
 {% endblock %}

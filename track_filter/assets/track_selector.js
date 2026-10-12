@@ -1,8 +1,9 @@
 /**
  * Track Selector — visual enhancement for the team creation form.
  *
- * Highlights the selected track option with red/blue styling
- * and validates that a track is chosen before form submission.
+ * Highlights the form with the accent colour of the selected track. The
+ * colour comes from the option's data-accent attribute, rendered from the
+ * plugin configuration.
  */
 document.addEventListener("DOMContentLoaded", function () {
     var select = document.getElementById("track");
@@ -12,13 +13,15 @@ document.addEventListener("DOMContentLoaded", function () {
         var form = select.closest("form");
         if (!form) return;
 
-        // Reset
-        form.classList.remove("track-selected-red", "track-selected-blue");
+        var option = select.options[select.selectedIndex];
+        var accent = option ? option.getAttribute("data-accent") : "";
 
-        if (select.value === "red-team") {
-            form.classList.add("track-selected-red");
-        } else if (select.value === "blue-team") {
-            form.classList.add("track-selected-blue");
+        if (accent) {
+            form.style.setProperty("--track-selected-accent", accent);
+            form.style.setProperty("--track-selected-glow", accent + "4d");
+            form.classList.add("track-selected");
+        } else {
+            form.classList.remove("track-selected");
         }
     });
 });

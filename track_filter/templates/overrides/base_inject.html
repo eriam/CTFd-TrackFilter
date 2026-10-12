@@ -1,9 +1,14 @@
 <!-- Track Filter: injected into base.html via override_template -->
+<style>
+{{ track_theme_css | safe }}
+</style>
 <script>
 (function() {
-    var cls = "{{ track_body_class }}";
-    if (cls) {
-        document.body.classList.add(cls);
+    var classes = "{{ track_body_class }}".split(" ");
+    for (var i = 0; i < classes.length; i++) {
+        if (classes[i]) {
+            document.body.classList.add(classes[i]);
+        }
     }
 })();
 </script>

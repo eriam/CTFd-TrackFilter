@@ -1,68 +1,42 @@
-/* Track Filter — Red/Blue theming
+/* Track Filter — track theming
  *
- * Activated by <body class="track-red"> or <body class="track-blue">,
- * injected via context processor in __init__.py.
+ * Activated by <body class="track-themed <theme class>">, e.g.
+ * "track-themed track-red", injected via context processor in __init__.py.
  * CSS is loaded via base template override in __init__.py.
  */
 
 /* ── Variables ──────────────────────────────────────────────────── */
-
-body.track-red {
-    --track-accent: #dc2626;
-    --track-accent-rgb: 220, 38, 38;
-    --track-accent-light: #fecaca;
-    --track-accent-dark: #991b1b;
-    --track-bg: #1a0505;
-    --track-bg-subtle: #2a0a0a;
-    --track-surface: rgba(220, 38, 38, 0.06);
-    --track-border: rgba(220, 38, 38, 0.25);
-    --track-glow: rgba(220, 38, 38, 0.4);
-    --track-label: "GRANITE STORM";
-    --track-icon: "\f071"; /* fa-exclamation-triangle */
-}
-
-body.track-blue {
-    --track-accent: #2563eb;
-    --track-accent-rgb: 37, 99, 235;
-    --track-accent-light: #bfdbfe;
-    --track-accent-dark: #1e3a8a;
-    --track-bg: #050a1a;
-    --track-bg-subtle: #0a1230;
-    --track-surface: rgba(37, 99, 235, 0.06);
-    --track-border: rgba(37, 99, 235, 0.25);
-    --track-glow: rgba(37, 99, 235, 0.4);
-    --track-label: "VEM-CERT";
-    --track-icon: "\f132"; /* fa-shield */
-}
+/*
+ * Per-track variables (--track-accent, --track-accent-rgb,
+ * --track-accent-light, --track-accent-dark, --track-bg,
+ * --track-bg-subtle, --track-surface, --track-border, --track-glow,
+ * --track-label) are generated from the plugin configuration and
+ * injected as an inline <style> block for body.<theme class>.
+ */
 
 /* ── Page background ────────────────────────────────────────────── */
 
-body.track-red,
-body.track-blue {
+body.track-themed {
     background-color: var(--track-bg) !important;
 }
 
-body.track-red .container,
-body.track-blue .container {
+body.track-themed .container {
     border-left: 2px solid var(--track-border);
     border-right: 2px solid var(--track-border);
 }
 
 /* ── Navbar ─────────────────────────────────────────────────────── */
 
-body.track-red .navbar,
-body.track-blue .navbar {
+body.track-themed .navbar {
     background-color: var(--track-accent) !important;
     box-shadow: 0 2px 12px var(--track-glow);
 }
 
-body.track-red .navbar .navbar-brand,
-body.track-blue .navbar .navbar-brand {
+body.track-themed .navbar .navbar-brand {
     font-weight: 700;
 }
 
-body.track-red .navbar .navbar-brand::before,
-body.track-blue .navbar .navbar-brand::before {
+body.track-themed .navbar .navbar-brand::before {
     content: var(--track-label);
     font-size: 0.6em;
     opacity: 0.7;
@@ -73,144 +47,121 @@ body.track-blue .navbar .navbar-brand::before {
 
 /* ── Buttons ────────────────────────────────────────────────────── */
 
-body.track-red .btn-primary,
-body.track-blue .btn-primary {
+body.track-themed .btn-primary {
     background-color: var(--track-accent) !important;
     border-color: var(--track-accent-dark) !important;
 }
 
-body.track-red .btn-primary:hover,
-body.track-blue .btn-primary:hover,
-body.track-red .btn-primary:focus,
-body.track-blue .btn-primary:focus {
+body.track-themed .btn-primary:hover,
+body.track-themed .btn-primary:focus {
     background-color: var(--track-accent-dark) !important;
     box-shadow: 0 0 0 0.2rem var(--track-glow) !important;
 }
 
-body.track-red .btn-outline-primary,
-body.track-blue .btn-outline-primary {
+body.track-themed .btn-outline-primary {
     color: var(--track-accent) !important;
     border-color: var(--track-accent) !important;
 }
 
-body.track-red .btn-outline-primary:hover,
-body.track-blue .btn-outline-primary:hover {
+body.track-themed .btn-outline-primary:hover {
     background-color: var(--track-accent) !important;
     color: #fff !important;
 }
 
 /* ── Challenge board ────────────────────────────────────────────── */
 
-body.track-red .challenge-category,
-body.track-blue .challenge-category {
+body.track-themed .challenge-category {
     border-left: 4px solid var(--track-accent);
 }
 
 /* Challenge buttons on the board */
-body.track-red .challenge-button,
-body.track-blue .challenge-button {
+body.track-themed .challenge-button {
     border: 1px solid var(--track-border) !important;
     transition: box-shadow 0.2s, border-color 0.2s;
 }
 
-body.track-red .challenge-button:hover,
-body.track-blue .challenge-button:hover {
+body.track-themed .challenge-button:hover {
     border-color: var(--track-accent) !important;
     box-shadow: 0 0 8px var(--track-glow);
 }
 
-body.track-red .challenge-button.solved,
-body.track-blue .challenge-button.solved {
+body.track-themed .challenge-button.solved {
     background-color: var(--track-surface) !important;
     border-color: var(--track-accent) !important;
 }
 
 /* Category headers */
-body.track-red .category-header,
-body.track-blue .category-header {
+body.track-themed .category-header {
     background-color: var(--track-bg-subtle) !important;
     border-bottom: 2px solid var(--track-accent);
 }
 
 /* ── Challenge modal ────────────────────────────────────────────── */
 
-body.track-red .modal-content,
-body.track-blue .modal-content {
+body.track-themed .modal-content {
     border: 1px solid var(--track-border);
     box-shadow: 0 0 20px var(--track-glow);
 }
 
-body.track-red .modal-header,
-body.track-blue .modal-header {
+body.track-themed .modal-header {
     background-color: var(--track-bg-subtle) !important;
     border-bottom: 2px solid var(--track-accent);
 }
 
-body.track-red .modal-header .modal-title,
-body.track-blue .modal-header .modal-title {
+body.track-themed .modal-header .modal-title {
     color: var(--track-accent-light);
 }
 
 /* Flag input in modal */
-body.track-red .modal-body input[name="answer"],
-body.track-blue .modal-body input[name="answer"] {
+body.track-themed .modal-body input[name="answer"] {
     border-color: var(--track-border);
 }
 
-body.track-red .modal-body input[name="answer"]:focus,
-body.track-blue .modal-body input[name="answer"]:focus {
+body.track-themed .modal-body input[name="answer"]:focus {
     border-color: var(--track-accent);
     box-shadow: 0 0 0 0.2rem var(--track-glow);
 }
 
 /* ── Scoreboard ─────────────────────────────────────────────────── */
 
-body.track-red #scoreboard thead,
-body.track-blue #scoreboard thead {
+body.track-themed #scoreboard thead {
     background-color: var(--track-accent) !important;
 }
 
-body.track-red #scoreboard tbody tr:hover,
-body.track-blue #scoreboard tbody tr:hover {
+body.track-themed #scoreboard tbody tr:hover {
     background-color: var(--track-surface) !important;
 }
 
-body.track-red .score-graph,
-body.track-blue .score-graph {
+body.track-themed .score-graph {
     --graph-primary: var(--track-accent);
 }
 
 /* ── Cards and panels ───────────────────────────────────────────── */
 
-body.track-red .card,
-body.track-blue .card {
+body.track-themed .card {
     border-color: var(--track-border) !important;
 }
 
-body.track-red .card-header,
-body.track-blue .card-header {
+body.track-themed .card-header {
     background-color: var(--track-bg-subtle) !important;
     border-bottom-color: var(--track-border) !important;
 }
 
 /* ── Hints ──────────────────────────────────────────────────────── */
 
-body.track-red .hint-button,
-body.track-blue .hint-button {
+body.track-themed .hint-button {
     border-color: var(--track-accent) !important;
     color: var(--track-accent) !important;
 }
 
-body.track-red .hint-button:hover,
-body.track-blue .hint-button:hover {
+body.track-themed .hint-button:hover {
     background-color: var(--track-accent) !important;
     color: #fff !important;
 }
 
 /* ── Notifications / toasts ─────────────────────────────────────── */
 
-body.track-red .alert-success,
-body.track-blue .alert-success {
+body.track-themed .alert-success {
     border-left: 4px solid var(--track-accent);
 }
 
@@ -226,57 +177,42 @@ body.track-blue .alert-success {
     border-radius: 4px;
 }
 
-body.track-red .track-badge {
-    background-color: var(--track-accent);
-    color: #fff;
-}
-
-body.track-blue .track-badge {
+body.track-themed .track-badge {
     background-color: var(--track-accent);
     color: #fff;
 }
 
 /* ── Team creation form highlights ──────────────────────────────── */
 
-.track-selected-red {
-    border: 2px solid #dc2626 !important;
-    box-shadow: 0 0 12px rgba(220, 38, 38, 0.3);
-}
-
-.track-selected-blue {
-    border: 2px solid #2563eb !important;
-    box-shadow: 0 0 12px rgba(37, 99, 235, 0.3);
+.track-selected {
+    border: 2px solid var(--track-selected-accent, currentColor) !important;
+    box-shadow: 0 0 12px var(--track-selected-glow, transparent);
 }
 
 /* ── Links ──────────────────────────────────────────────────────── */
 
-body.track-red a:not(.btn):not(.nav-link),
-body.track-blue a:not(.btn):not(.nav-link) {
+body.track-themed a:not(.btn):not(.nav-link) {
     color: var(--track-accent-light);
 }
 
-body.track-red a:not(.btn):not(.nav-link):hover,
-body.track-blue a:not(.btn):not(.nav-link):hover {
+body.track-themed a:not(.btn):not(.nav-link):hover {
     color: var(--track-accent);
 }
 
 /* ── Scrollbar accent (Chromium) ────────────────────────────────── */
 
-body.track-red::-webkit-scrollbar-thumb,
-body.track-blue::-webkit-scrollbar-thumb {
+body.track-themed::-webkit-scrollbar-thumb {
     background-color: var(--track-accent-dark);
 }
 
-body.track-red::-webkit-scrollbar-track,
-body.track-blue::-webkit-scrollbar-track {
+body.track-themed::-webkit-scrollbar-track {
     background-color: var(--track-bg);
 }
 
 /* ── Print: remove track theming ────────────────────────────────── */
 
 @media print {
-    body.track-red,
-    body.track-blue {
+    body.track-themed {
         --track-accent: #333;
         --track-bg: #fff;
         background-color: #fff !important;
