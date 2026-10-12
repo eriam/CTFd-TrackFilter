@@ -1,11 +1,42 @@
 {% extends "admin/base.html" %}
 
+{% macro track_badge(track_id) -%}
+    {%- set track = tf_config.get(track_id) -%}
+    {%- if track -%}
+        <span class="badge {% if not track.accent %}bg-info{% endif %}"
+              {% if track.accent %}style="background-color: {{ track.accent }};"{% endif %}>{{ track.label }}</span>
+    {%- elif track_id -%}
+        <span class="badge bg-warning text-dark" title="Not in the configuration: ignored">{{ track_id }}</span>
+    {%- else -%}
+        <span class="badge bg-secondary">None</span>
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro track_select(selected) -%}
+    <select name="track" class="form-select form-select-sm" style="width: auto;">
+        <option value="" {% if not selected %}selected{% endif %}>&mdash; None &mdash;</option>
+        {% for track in tf_config.tracks.values() %}
+        <option value="{{ track.id }}" {% if selected == track.id %}selected{% endif %}>{{ track.label }}</option>
+        {% endfor %}
+    </select>
+{%- endmacro %}
+
+{% macro filter_inputs() -%}
+    <input type="hidden" name="nonce" value="{{ nonce }}">
+    {% if filter_team_id is not none %}<input type="hidden" name="filter_team_id" value="{{ filter_team_id }}">{% endif %}
+    {% if filter_track %}<input type="hidden" name="filter_track" value="{{ filter_track }}">{% endif %}
+{%- endmacro %}
+
 {% block content %}
 <div class="container mt-4">
-    <h2>Track Filter &mdash; Team Assignments</h2>
+    <h2>Track Filter</h2>
     <p class="text-muted">
-        Assign each team to <strong>Red Team</strong> (GRANITE STORM) or
-        <strong>Blue Team</strong> (VEM-CERT). Teams without a track see all challenges.
+        Tracks: {% for track in tf_config.tracks.values() %}<strong>{{ track.label }}</strong>
+        (category prefix &laquo;&nbsp;{{ track.category_prefix }}&nbsp;&raquo;){% if not loop.last %}, {% endif %}{% endfor %}.
+        A user's effective track is their own track{% if tf_config.fallback_to_team %}, else their team's track{% endif %}.
+        Users without a track see
+        {% if tf_config.untracked == "all" %}all challenges{% else %}no challenges{% endif %}.
+        Admins always see everything.
     </p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -19,6 +50,70 @@
     {% endif %}
     {% endwith %}
 
+    <h3 class="mt-4">Users</h3>
+    <form method="GET" action="{{ url_for('track_admin.config_view') }}"
+          class="d-flex gap-2 align-items-center mb-3">
+        <select name="filter_team_id" class="form-select form-select-sm" style="width: auto;">
+            <option value="">All teams</option>
+            {% for team in teams %}
+            <option value="{{ team.id }}" {% if filter_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="filter_track" class="form-select form-select-sm" style="width: auto;">
+            <option value="">All effective tracks</option>
+            {% for track in tf_config.tracks.values() %}
+            <option value="{{ track.id }}" {% if filter_track == track.id %}selected{% endif %}>{{ track.label }}</option>
+            {% endfor %}
+            <option value="none" {% if filter_track == "none" %}selected{% endif %}>No track</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
+    </form>
+
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Team</th>
+                <th>Own Track</th>
+                <th>Effective Track</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.user_id }}</td>
+                <td>{{ user.name }}<br><small class="text-muted">{{ user.email }}</small></td>
+                <td>{{ user.team or "" }}</td>
+                <td>{{ track_badge(user.track) }}</td>
+                <td>
+                    {{ track_badge(user.effective_track) }}
+                    {% if user.effective_track and user.effective_track != user.track %}
+                    <small class="text-muted">(team)</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('track_admin.assign_user_track') }}"
+                          class="d-inline-flex gap-2 align-items-center">
+                        <input type="hidden" name="user_id" value="{{ user.user_id }}">
+                        {{ filter_inputs() }}
+                        {{ track_select(user.track) }}
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-muted">No users match.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="mt-5">Teams</h3>
+    <p class="text-muted">
+        A team track applies to members without their own track
+        {% if not tf_config.fallback_to_team %}<strong>only when fallback_to_team is enabled (it is currently off)</strong>{% endif %}.
+    </p>
     <table class="table table-striped table-hover">
         <thead>
             <tr>
@@ -33,36 +128,13 @@
             <tr>
                 <td>{{ team.id }}</td>
                 <td>{{ team.name }}</td>
-                <td>
-                    {% if team.id in tracks %}
-                        {% if tracks[team.id] == "red-team" %}
-                            <span class="badge bg-danger">Red Team</span>
-                        {% elif tracks[team.id] == "blue-team" %}
-                            <span class="badge bg-primary">Blue Team</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="badge bg-secondary">None</span>
-                    {% endif %}
-                </td>
+                <td>{{ track_badge(tracks.get(team.id)) }}</td>
                 <td>
                     <form method="POST" action="{{ url_for('track_admin.assign_track') }}"
                           class="d-inline-flex gap-2 align-items-center">
                         <input type="hidden" name="team_id" value="{{ team.id }}">
-                        <input type="hidden" name="nonce" value="{{ nonce }}">
-                        <select name="track" class="form-select form-select-sm" style="width: auto;">
-                            <option value=""
-                                {% if team.id not in tracks %}selected{% endif %}>
-                                &mdash; None &mdash;
-                            </option>
-                            <option value="red-team"
-                                {% if tracks.get(team.id) == "red-team" %}selected{% endif %}>
-                                Red Team
-                            </option>
-                            <option value="blue-team"
-                                {% if tracks.get(team.id) == "blue-team" %}selected{% endif %}>
-                                Blue Team
-                            </option>
-                        </select>
+                        {{ filter_inputs() }}
+                        {{ track_select(tracks.get(team.id)) }}
                         <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
                     </form>
                 </td>

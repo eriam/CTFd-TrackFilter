@@ -1,5 +1,7 @@
 """Track resolution: which track applies to a given user."""
 
+from CTFd.models import db
+
 from .config import get_config
 from .models import TeamTrack, UserTrack
 
@@ -43,3 +45,67 @@ def resolve_track_id(user_id, team_id, config=None):
         if tt is not None:
             team_tracks[team_id] = tt.track
     return effective_track_id(user_id, team_id, user_tracks, team_tracks, config)
+
+
+def _set_track(model, key, key_value, track):
+    """Create, update or (track == "") delete one assignment row.
+
+    Returns the previous track (or None).  Does not commit.
+    """
+    existing = model.query.get(key_value)
+    previous = existing.track if existing else None
+    if track == "":
+        if existing:
+            db.session.delete(existing)
+    elif existing:
+        existing.track = track
+    else:
+        db.session.add(model(**{key: key_value, "track": track}))
+    return previous
+
+
+def set_user_track(user_id, track):
+    return _set_track(UserTrack, "user_id", user_id, track)
+
+
+def set_team_track(team_id, track):
+    return _set_track(TeamTrack, "team_id", team_id, track)
+
+
+def user_rows(team_id=None, track=None, config=None):
+    """Users with their team, own, team and effective tracks.
+
+    ``track`` filters on the effective track; "none" keeps users without one.
+    """
+    from CTFd.models import Teams, Users
+
+    cfg = config or get_config()
+    user_tracks, team_tracks = load_assignments()
+    team_names = {t.id: t.name for t in Teams.query.all()}
+
+    query = Users.query.order_by(Users.id)
+    if team_id is not None:
+        query = query.filter(Users.team_id == team_id)
+
+    rows = []
+    for user in query.all():
+        effective = effective_track_id(
+            user.id, user.team_id, user_tracks, team_tracks, cfg
+        )
+        if track == "none" and effective is not None:
+            continue
+        if track not in (None, "", "none") and effective != track:
+            continue
+        rows.append(
+            {
+                "user_id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "team_id": user.team_id,
+                "team": team_names.get(user.team_id),
+                "track": user_tracks.get(user.id),
+                "team_track": team_tracks.get(user.team_id),
+                "effective_track": effective,
+            }
+        )
+    return rows

@@ -24,6 +24,8 @@ _CSS_CLASS_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*$")
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 
 UNTRACKED_POLICIES = ("all", "none")
+# Used as "no track" in admin filters and in the per-track scoreboard.
+RESERVED_TRACK_IDS = ("none",)
 
 # CSS custom properties generated from a track's theme colours.
 _THEME_COLOR_VARS = OrderedDict(
@@ -53,6 +55,8 @@ def validate_track_id(track_id):
         raise ConfigError(
             f"track id {track_id!r} must use lowercase letters, digits, '-' or '_'"
         )
+    if track_id in RESERVED_TRACK_IDS:
+        raise ConfigError(f"track id {track_id!r} is reserved")
 
 
 def _hex_to_rgb(color):

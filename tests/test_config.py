@@ -101,7 +101,7 @@ class TestCustomConfig:
 class TestInvalidConfig:
     @pytest.mark.parametrize(
         "track_id",
-        ["", "Red-Team", "red team", "-red", "x" * 17, None, 12, "rouge/bleu"],
+        ["", "Red-Team", "red team", "-red", "x" * 17, None, 12, "rouge/bleu", "none"],
     )
     def test_invalid_track_id_rejected(self, track_id):
         with pytest.raises(ConfigError):
