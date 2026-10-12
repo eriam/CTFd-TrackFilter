@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A CTFd plugin that filters challenges by track. Tracks are configurable (default: red-team / blue-team) and attached to a **user** (`UserTrack`), falling back to the user's **team** (`TeamTrack`). Teams can therefore mix tracks (Valmont: `blue-team` + `cs-tip`). The plugin is designed to be mounted into CTFd's plugins directory via Docker volume — it is **not** installed alongside a local CTFd instance.
+A CTFd plugin that filters challenges by track. Tracks are configurable (default: red-team / blue-team) and attached to a **user** (`UserTrack`), falling back to the user's **team** (`TeamTrack`). Teams can therefore mix tracks. The plugin is scenario-independent: nothing event-specific belongs in the code, the default config, the tests or the docs; event configurations live in `track_filter/examples/`. The plugin is designed to be mounted into CTFd's plugins directory via Docker volume — it is **not** installed alongside a local CTFd instance.
 
 ## Running tests
 
@@ -41,12 +41,12 @@ Tests patch `get_current_user`, `get_current_team` and `is_admin` **in the modul
 
 ## Configuration options
 
-`tracks`, `fallback_to_team` (true), `self_select` (true), `untracked` (`all` | `none`), `hide_foreign_solves` (false). Without an override file the plugin behaves as the original red/blue version. Example: `track_filter/examples/valmont.json`.
+`tracks`, `fallback_to_team` (true), `self_select` (true), `untracked` (`all` | `none`), `hide_foreign_solves` (false). Without an override file: generic `red-team` / `blue-team` tracks, no banner. Examples from past events: `track_filter/examples/*.json` (each one is validated by `test_config.py`).
 
 ## Category convention
 
 Challenges must use the track's category prefix:
-- `Red Team — <subcategory>`, `Blue Team · 01 — <subcategory>`, `CS-TIP — Site annexe`
+- `Red Team — <subcategory>`, `Blue Team · 01 — <subcategory>`, `Support — <subcategory>`
 - `[Optional] Red Team — <subcategory>` (optional prefix is stripped before matching)
 
 CTFd evaluates prerequisites on team solves: a challenge must never require a challenge from another track.
@@ -58,7 +58,7 @@ Mount `track_filter/` into CTFd's plugins folder:
 volumes:
   - ./CTFd-TrackFilter/track_filter:/opt/CTFd/CTFd/plugins/track_filter
 environment:
-  - TRACK_FILTER_CONFIG=/opt/CTFd/CTFd/plugins/track_filter/examples/valmont.json  # optional
+  - TRACK_FILTER_CONFIG=/opt/CTFd/tracks.json  # optional, a JSON file mounted into the container
 ```
 
 ## Test infrastructure
@@ -68,6 +68,6 @@ environment:
 - `client` — test client for the app
 - `teams_model` — the stub `Teams` SQLAlchemy model
 - `models` — all stub models (`Teams`, `Users`, `Challenges`, `Hints`, `Solutions`, `Solves`, `Awards`)
-- `track_config` (autouse) — resets the active config to the shipped default around each test; use `helpers.use_config(**options)` for the Valmont tracks
+- `track_config` (autouse) — resets the active config to the shipped default around each test; use `helpers.use_config(**options)` for the generic mixed-team tracks (`blue-team` + `support`)
 
 The admin blueprint is **not** registered in the base `app` fixture — `test_admin.py` has its own `admin_app` fixture that adds it; `test_api.py` registers `track_api`, `test_enforcement.py` / `test_solves.py` register hooks and stand-in CTFd routes, `test_plugin.py` calls `load(app)`.

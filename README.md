@@ -9,13 +9,9 @@ solves only their own track's challenges, and all points go to the team as in
 CTFd's native teams mode. A track can still be attached to a whole **team**,
 which members inherit.
 
-Deployments:
-- **Operation Vercors**: one track per team, `red-team` (GRANITE STORM, 50
-  attacker challenges) and `blue-team` (VEM-CERT, 45 defender challenges).
-  This is the default configuration.
-- **Valmont**: mixed teams of AIS (`blue-team`, categories
-  `Blue Team · NN — …`) and CS-TIP (`cs-tip`, category `CS-TIP — Site annexe`).
-  See [Valmont configuration](#valmont-configuration).
+The plugin holds no scenario: tracks, category prefixes, colours and options
+all come from a JSON configuration. Two typical setups are described in
+[Example configurations](#example-configurations).
 
 ## How it works
 
@@ -55,9 +51,15 @@ To use a configuration other than the default one, point
 
 ```yaml
 ctfd:
+  volumes:
+    - ./CTFd-TrackFilter/track_filter:/opt/CTFd/CTFd/plugins/track_filter
+    - ./tracks.json:/opt/CTFd/tracks.json:ro
   environment:
-    - TRACK_FILTER_CONFIG=/opt/CTFd/CTFd/plugins/track_filter/examples/valmont.json
+    - TRACK_FILTER_CONFIG=/opt/CTFd/tracks.json
 ```
+
+Keep the deployment's configuration next to its `docker-compose.yml`, or point
+`TRACK_FILTER_CONFIG` at one of the files in `track_filter/examples/`.
 
 The plugin creates its tables (`team_tracks`, `user_tracks`) on load with
 `create_all()`. Existing `team_tracks` rows keep working unchanged through the
@@ -91,24 +93,41 @@ Track definition:
 | `description` | no | Shown after the label on the team creation form. |
 | `theme` | no | A CSS class name, or an object: `class` (default `track-<id>`), `accent`, `accent_light`, `accent_dark`, `bg`, `bg_subtle` (`#rgb` / `#rrggbb` colours) and `banner` (text above the navbar brand). |
 
-The default configuration reproduces the original behaviour: `red-team` →
-`Red Team` (`track-red`), `blue-team` → `Blue Team` (`track-blue`), any team
-may pick its track, and untracked teams see everything.
+The default configuration defines two tracks, `red-team` → `Red Team`
+(`track-red`) and `blue-team` → `Blue Team` (`track-blue`), without banner.
+Any team may pick its track, and untracked teams see everything.
 
 When a stored track is no longer in the configuration, it is ignored: resolution
 moves on to the next rule. The admin page flags such a track in yellow.
 
-## Valmont configuration
+## Example configurations
 
-`track_filter/examples/valmont.json`:
+`track_filter/examples/` holds complete configurations from past events.
+Copy one and adapt the tracks, prefixes and colours.
+
+| File | Setup |
+|---|---|
+| `vercors.json` | One track per team (`red-team`, `blue-team`), inherited by every member, with navbar banners. |
+| `valmont.json` | Mixed teams (`blue-team`, `cs-tip`): tracks are per user and assigned by admins only. |
+
+### One track per team
+
+Keep the defaults (`fallback_to_team: true`, `self_select: true`): a team
+picks its track when it is created, or an admin sets it on
+`/admin/track_filter`, and every member inherits it.
+
+### Mixed teams
+
+Members of the same team play different tracks and their points add up in
+the team score. Typical options:
 
 ```json
 {
     "tracks": [
         {"id": "blue-team", "label": "Blue Team", "category_prefix": "Blue Team",
-         "description": "AIS", "theme": {"class": "track-blue", "accent": "#2563eb", "...": "..."}},
-        {"id": "cs-tip", "label": "CS-TIP", "category_prefix": "CS-TIP",
-         "description": "Site annexe", "theme": {"class": "track-cs-tip", "accent": "#0d9488", "...": "..."}}
+         "theme": {"class": "track-blue", "accent": "#2563eb"}},
+        {"id": "support", "label": "Support", "category_prefix": "Support",
+         "theme": {"accent": "#0d9488"}}
     ],
     "fallback_to_team": false,
     "self_select": false,
@@ -117,15 +136,15 @@ moves on to the next rule. The admin page flags such a track in yellow.
 }
 ```
 
-- AIS categories (`Blue Team · 01 — Exposition`, …) start with `Blue Team` and
-  do not need to change. The CS-TIP category is `CS-TIP — Site annexe`.
-- `self_select: false`: a CS-TIP player cannot declare themselves
-  `blue-team`. Only admins assign tracks, with the bulk API below.
+- `self_select: false`: players cannot pick their own track. Only admins
+  assign tracks, with the bulk API below.
 - `untracked: none` + `fallback_to_team: false`: until a player has been
   assigned a track, they see nothing. This holds even if their team had a
   team track.
-- Teams are mixed: a team's score is the sum of its members' points, whatever
-  their track. `GET /api/v1/track_filter/scoreboard` shows the split by track.
+- `hide_foreign_solves: true`: team pages do not reveal the other track's
+  challenge names.
+- `GET /api/v1/track_filter/scoreboard` shows each team's points split by
+  track.
 
 Deployment:
 
@@ -138,13 +157,13 @@ Deployment:
    curl -X POST https://ctfd.example/api/v1/track_filter/users \
         -H "Authorization: Token $CTFD_TOKEN" \
         -H "Content-Type: application/json" \
-        -d '[{"email": "ais01@valmont.example", "track": "blue-team"},
-             {"name": "cstip-binome-03", "track": "cs-tip"},
+        -d '[{"email": "player01@example.org", "track": "blue-team"},
+             {"name": "player02", "track": "support"},
              {"user_id": 42, "track": ""}]'
    ```
 
-4. Check with the export (`Content-Type: application/json` is needed for CTFd
-   token authentication, even on GET):
+4. Check that nobody is left without a track (`Content-Type:
+   application/json` is needed for CTFd token authentication, even on GET):
 
    ```bash
    curl https://ctfd.example/api/v1/track_filter/users?track=none \
@@ -203,7 +222,7 @@ like any CTFd API call.
 Challenges must use category prefixes matching the track, for example:
 
 - `Red Team — reconnaissance`, `Blue Team — forensics`
-- `Blue Team · 01 — Exposition`, `CS-TIP — Site annexe`
+- `Blue Team · 01 — Recon`, `Support — Helpdesk`
 - `[Optional] Red Team — bonus` (optional prefix is stripped before matching)
 
 When one prefix starts another one (`Blue` and `Blue Team`), the longest
@@ -223,8 +242,8 @@ templates. The test suite also passes with the libraries CTFd 3.8.8 pins
 (Python 3.11, Flask 2.1.3, Werkzeug 2.2.3, Flask-SQLAlchemy 2.5.1,
 SQLAlchemy 1.4.54).
 
-**Valmont's CTFd version: to be confirmed** (for example
-`docker compose exec ctfd python -c "import CTFd; print(CTFd.__version__)"`).
+Check the deployed version with
+`docker compose exec ctfd python -c "import CTFd; print(CTFd.__version__)"`.
 With another version, check the routes listed in
 [Server-side enforcement](#server-side-enforcement). `/solution`,
 `/api/v1/solutions/<id>` and the `solutions` unlock type only exist since 3.8.
